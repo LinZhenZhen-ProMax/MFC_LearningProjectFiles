@@ -62,6 +62,9 @@
     <ClCompile Include="MotionPlanner.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="test.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Learn1V1202609121037.rc">

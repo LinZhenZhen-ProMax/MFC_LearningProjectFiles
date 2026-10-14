@@ -14,6 +14,7 @@ public:
 	{
 		char   letter = 0;
 		double value = 0.0;
+        bool hasDot =false;
 	};
 
     enum struct ErrorKind
@@ -21,17 +22,18 @@ public:
         no_error,
         not_a_number,
         out_of_range,
-        illegal_code,
+        illegal_char,
         cannot_open_file,
-        Unsupported_Letter
+        Unsupported_Letter,
+        illegal_value
     };
     
     struct CodeError
     {
-        std::string path = 0;
+        std::string path = std::string();
         int lineNo = 0;
         ErrorKind kind = ErrorKind::no_error;
-        std::string source = 0;
+        std::string source = std::string();
     };
 
 
@@ -160,7 +162,11 @@ public:
     /***************************************
     * LoadProgram函数读程序并把单行程序输出，行号输出
     ***************************************/
-    bool GCodeModalMachine::LoadProgram(const std::string& path, std::vector<CodeError>& outWords, std::vector<CodeError>& outErrors, ModalState& modal);
+    bool GCodeModalMachine::LoadProgram(const std::string&           path, 
+                                        std::vector<CodeError>&  outWords, 
+                                        std::vector<CodeError>& outErrors, 
+                                        ModalState&                 modal,
+                                        MotionSegment&             outseg);
 
     /****************************************
     * LexLine函数逐行读加工程序，切成 word 数组
@@ -169,20 +175,29 @@ public:
     * 去空格、丢注释、转大写
     * 输入参数类型，std::string，std::vector<Word>，std::string
     ****************************************/
-    bool GCodeModalMachine::LexLine(const int lineNo, const std::string& line, std::vector<Word>& words, std::vector<CodeError>& err);
+    bool GCodeModalMachine::LexLine(const int              lineNo, 
+                                    const std::string&       line, 
+                                    std::vector<Word>&      words, 
+                                    std::vector<CodeError>&   err);
 
     /****************************************
     * ParseLine函数解析一行, 更新模态和当前位置, 产出运动段
     ****************************************/
-    bool GCodeModalMachine::ParseLine(const int lineNo, 
-                                      const std::string& line, 
+    bool GCodeModalMachine::ParseLine(const int               lineNo, 
+                                      const std::string&        line, 
                                       const std::vector<Word>& words, 
-                                      ModalState& modal, 
-                                      MotionSegment& outSeg, 
-                                      std::vector<CodeError>& err);
+                                      ModalState&              modal, 
+                                      MotionSegment&          outSeg, 
+                                      std::vector<CodeError>&    err);
 
     /****************************************
     * ApplyOffset函数把"程序坐标"换算成"机床坐标"
     ****************************************/ 
-    void ApplyOffset(double& x, double& y, double& z, const ModalState& modal);
+    void GCodeModalMachine::ApplyOffset(double& x, double& y, double& z, const ModalState& modal);
+
+    bool GCodeModalMachine::RecordError(const int                                 lineNo,
+                                        const std::string&                          line,
+                                        ErrorKind                              errorkind,
+                                        const std::string&                          path,
+                                        std::vector<CodeError>&                      err);
 };

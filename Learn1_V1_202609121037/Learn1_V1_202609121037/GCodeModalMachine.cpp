@@ -1,6 +1,21 @@
 #include "pch.h"
 #include "GCodeModalMachine.h"
 
+bool GCodeModalMachine::RecordError(const int                        lineNo,
+                                    const std::string&                 line,
+                                    ErrorKind                     errorkind,
+                                    const std::string&                 path,
+                                    std::vector<CodeError>&             err)
+{
+    CodeError e;
+    e.lineNo = lineNo;
+    e.source = line;
+    e.kind = errorkind;
+    e.path = path;
+    err.push_back(e);
+    return false;
+}
+
 
 /****************************************************
 * LoadProgram读加工程序函数
@@ -11,18 +26,24 @@
 * 还要转给状态机搞状态，应该每读一行有状态都要先搞状态，一行读不出来要把错误往上传,错误要不要也拼进去
 * 上位机交给下位机的，应该是运动段，就是带有上一坐标和下一坐标的，运动段
 ****************************************************/
-bool GCodeModalMachine::LoadProgram(const std::string& path, std::vector<CodeError>& outWords,std::vector<CodeError>& outErrors, ModalState& modal)
+bool GCodeModalMachine::LoadProgram(const std::string& path, 
+                                    std::vector<CodeError>& outWords,
+                                    std::vector<CodeError>& outErrors, 
+                                    ModalState& modal,
+                                    MotionSegment& outseg)
 {
     std::ifstream jogprogram(path);
     if (!jogprogram.is_open())
     {
-        CodeError e;
+        /*CodeError e;
         e.lineNo = -1;
         e.source = -1;
         e.kind = ErrorKind::cannot_open_file;
         e.path = path;
         outErrors.push_back(e);
-        return false;
+        return false;*/
+
+        return RecordError(0, std::string(), ErrorKind::cannot_open_file, path, outErrors);
     }
 
     std::string line;
@@ -53,7 +74,10 @@ bool GCodeModalMachine::LoadProgram(const std::string& path, std::vector<CodeErr
 * 读单行加工程序并切成一个一个的词
 * vector类负责创造一个能自动变长的数组，<Word>尖括号内表示数组类型，这个自动变长的数组本质上是一个类，他有成员函数
 ********************************************************/
-bool GCodeModalMachine::LexLine(const int lineNo, const std::string& line, std::vector<Word>& words, std::vector<CodeError>& err)
+bool GCodeModalMachine::LexLine(const int lineNo, 
+                                const std::string& line, 
+                                std::vector<Word>& words, 
+                                std::vector<CodeError>& err)
 {
     words.reserve(32);//在内存上申请容量
     words.clear();    //清空，但容量不变
@@ -90,11 +114,12 @@ bool GCodeModalMachine::LexLine(const int lineNo, const std::string& line, std::
         }
         /************************************************
         * 读到一个字母，小写转化成大写，读完字母开始读数值
-        * stod()，string to double字符串转双精度浮点数，两个参数，第二个参数表示从哪个字符开始没能解析
+        * stod()，string to double，字符串转双精度浮点数，返回position表示将多少字符解析为value
         * 但是stod只能从头读一整段字符串，不能从某个位置开始
-        * substr()，截取一段子串，两个参数（开始，取字符长度），没有第二个参数表示一直截到末尾
-        * 截取一段子串交给stod()，读出数值存入结构体word，
-        * stod()会抛出两个类型的错误所以用try，catch组合，
+        * substr()，截取一段子字符串
+        * 子串交给stod()读出数值存入结构体word，
+        * substr利用stod返回的position截取子串，检查子串内是否有“.”、“e”、“E”，“.”记录hasDot，“e”、“E”报非法值
+        * 用try，catch组合接住stod()抛出的两个类型的错误
         * 若不抛出错误则执行try内所有代码，将结构体word同步到vertor<Word>words，光标向后移动
         * 抛出错误则将错误信息存入err
         ************************************************/
@@ -108,38 +133,32 @@ bool GCodeModalMachine::LexLine(const int lineNo, const std::string& line, std::
             try
             {
                 word.value = std::stod(line.substr(i), &position);
+
+                word.hasDot = (std::string(line.substr(i, position)).find('.') != std::string::npos);
+                
+                if (std::string(line.substr(i, position)).find('e') != std::string::npos ||
+                    std::string(line.substr(i, position)).find('E') != std::string::npos)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                
                 words.push_back(word);
                 i = i + position;
             }
             catch (const std::invalid_argument&)
             {
-                CodeError e;
-                e.lineNo = lineNo;
-                e.source = line;
-                e.kind = ErrorKind::not_a_number;
-                err.push_back(e);
-                return false;
+                return RecordError(lineNo, line, ErrorKind::not_a_number, std::string(), err);
             }
             catch (const std::out_of_range&)
             {
-                CodeError e;
-                e.lineNo = lineNo;
-                e.source = line;
-                e.kind = ErrorKind::out_of_range;
-                err.push_back(e);
-                return false;
+                return RecordError(lineNo, line, ErrorKind::out_of_range, std::string(), err);
             }
 
             continue;
         }
 
         //所有的if都没踩到，返回false
-        CodeError e;
-        e.lineNo = lineNo;
-        e.source = line;
-        e.kind = ErrorKind::illegal_code;
-        err.push_back(e);
-        return false;
+        return RecordError(lineNo, line, ErrorKind::illegal_char, std::string(), err);
     }
 
     //所有字符都顺利读完，或者是注释，返回true
@@ -153,6 +172,14 @@ bool GCodeModalMachine::LexLine(const int lineNo, const std::string& line, std::
 * 产出运动段，用什么方式把word交给motionplanner，交给motionplanner的时候还要考虑更新状态的时机，
 * 比如说圆弧代码一定要在状态机更新为圆弧插补运动模式之后再给motionplanner
 * case 2:modal.motion = MotionType::ArcCW; break;像这样子就能更新状态了吗？
+* 
+* 每一行的行号，原文输入进来用于报错，
+* words输入进来ParseLine函数解析，
+* vector数组words每个元素都包含三个参数，.letter .value .hasDot
+* while循环读一行的words
+* switch，case配合定制每一个letter的解析方案，包括合法检测
+* G、M两个代码是离散值，需要再嵌套switch
+* 
 *************************************************/
 bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                                   const std::string& line,        //行
@@ -162,12 +189,16 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                                   std::vector<CodeError>& err)    //报错输出
 {
     size_t i = 0;
-    while (i < words.size())
+    while (i <= words.size())
     {
         switch (words[i].letter)
         {
             case'G':
             {
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
                 int i_value = (int)std::round(words[i].value);
                 switch (i_value)
                 {
@@ -207,6 +238,10 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
             
             case'M':
             {
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
                 int i_value = (int)std::round(words[i].value);
                 switch (i_value)
                 {
@@ -262,17 +297,12 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
 
             case'P':break; //参数
             case'Q':break; //参数
-            case'V':break; //参数
+            case'V':break; //加工参数组号
                 
             default:
             {
                 //所有case都没命中，报错
-                CodeError e;
-                e.lineNo = lineNo;
-                e.source = line;
-                e.kind = ErrorKind::Unsupported_Letter;
-                err.push_back(e);
-                return false;
+                return RecordError(lineNo, line, ErrorKind::Unsupported_Letter, std::string(), err);
                 break;
             }
 
