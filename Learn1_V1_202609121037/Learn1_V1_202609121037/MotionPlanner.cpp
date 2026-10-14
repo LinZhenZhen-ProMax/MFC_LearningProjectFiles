@@ -6,5 +6,23 @@ bool MotionPlanner::ProcessLine(const std::vector<GCodeModalMachine::Word>& word
                                 std::vector<GCodeModalMachine::CodeError>& errors,
                                 std::vector<GCodeModalMachine::MotionSegment>& outSegments)
 {
-
+    switch (modal.motion)
+    {
+        case GCodeModalMachine::MotionType::Rapid:
+        {
+            break;
+        }
+        case GCodeModalMachine::MotionType::Line:
+        {
+            break;
+        }
+        case GCodeModalMachine::MotionType::ArcCW:
+        {
+            break;
+        }
+        case GCodeModalMachine::MotionType::ArcCCW:
+        {
+            break;
+        }
+    }
 }

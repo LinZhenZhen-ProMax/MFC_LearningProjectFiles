@@ -41,10 +41,10 @@ public:
 	//枚举运动类型，都是常量
 	enum struct MotionType
 	{
-		Rapid=0,    // G00 快速进给
-		Line=1,     // G01 切削进给
-		ArcCW=2,    // G02 顺时针圆弧插补
-		ArcCCW=3    // G03 逆时针圆弧插补
+		Rapid = 0,   // G00 快速进给
+		Line = 1,     // G01 切削进给
+		ArcCW = 2,    // G02 顺时针圆弧插补
+		ArcCCW = 3    // G03 逆时针圆弧插补
 	};
 
     //枚举工作平面
