@@ -17,7 +17,7 @@ public:
 	enum { IDD = IDD_LEARN1_V1_202609121037_DIALOG };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 
@@ -31,4 +31,11 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedButtonOpenserial();
+	afx_msg void OnCbnSelchangeComboPort();
+	void CLearn1V1202609121037Dlg::InitSystemMenu();
+	CString m_strSend;
+	CString m_strRecv;
+	
 };

@@ -21,8 +21,14 @@ END_MESSAGE_MAP()
 
 // CLearn1V1202609121037App 构造
 
+//记住这条规则：当::后面那个名字和::前面那个名字一样时，它就是构造函数。
+//C++里特意规定：构造函数的名字必须和类名完全相同。
+//构造函数用来初始化类名
 CLearn1V1202609121037App::CLearn1V1202609121037App()
 {
+	//测试
+	TRACE(_T("[1] App构造函数  —— 注意：此时 main 还没开始！\n"));
+
 	// 支持重新启动管理器
 	m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
 
@@ -40,6 +46,9 @@ CLearn1V1202609121037App theApp;
 
 BOOL CLearn1V1202609121037App::InitInstance()
 {
+	//测试
+	TRACE(_T("[2] App实例的InitInstance开始\n"));
+
 	// 如果应用程序存在以下情况，Windows XP 上需要 InitCommonControlsEx()
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
 	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
@@ -50,6 +59,7 @@ BOOL CLearn1V1202609121037App::InitInstance()
 	InitCtrls.dwICC = ICC_WIN95_CLASSES;
 	InitCommonControlsEx(&InitCtrls);
 
+	//在这里又执行了一遍父类的初始化函数，说明子类的初始化函数是在父类的基础上加一点东西
 	CWinApp::InitInstance();
 
 
@@ -71,9 +81,18 @@ BOOL CLearn1V1202609121037App::InitInstance()
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
+	//创建一个Dlg实例
 	CLearn1V1202609121037Dlg dlg;
+
+	//测试
+	TRACE(_T("[4] Dlg 对象已构造完毕，准备 DoModal\n"));
+
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();
+
+	//测试
+	TRACE(_T("[6] DoModal 返回了，nResponse = %d\n"), (int)nResponse);
+
 	if (nResponse == IDOK)
 	{
 		// TODO: 在此放置处理何时用
