@@ -202,15 +202,24 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                 int i_value = (int)std::round(words[i].value);
                 switch (i_value)
                 {
-                    case 0:modal.motion = MotionType::Rapid; break;  //快速进给
-                    case 1:modal.motion = MotionType::Line; break;   //切削进给
-                    case 2:modal.motion = MotionType::ArcCW; break;  //顺时针圆弧插补
-                    case 3:modal.motion = MotionType::ArcCCW; break; //逆时针圆弧插补
-                    case 4:break; //暂停
-                    case 10:break; //取消镜像
-                    case 11:break; //X轴镜像
-                    case 12:break; //Y轴镜像
-                    case 13:break; //Z轴镜像
+                    case 0:modal.motion = MotionType::Rapid; break;  //快速进给G0
+                    case 1:modal.motion = MotionType::Line; break;   //切削进给G1
+                    case 2:modal.motion = MotionType::ArcCW; break;  //顺时针圆弧插补G2
+                    case 3:modal.motion = MotionType::ArcCCW; break; //逆时针圆弧插补G3
+                    case 4: //暂停，这个要检查words[i+1].letter是否为P或X
+                    {
+                        if (words[i + 1].letter != 'P' && words[i + 1].letter != 'X')
+                        {
+                            return RecordError(lineNo, line, ErrorKind::illegal_format, std::string(), err);
+                        }
+                        break; 
+                    }
+                        
+                    
+                    case 10:return RecordError(lineNo, line, ErrorKind::not_supported_temporarily, std::string(), err); break; //取消镜像
+                    case 11:return RecordError(lineNo, line, ErrorKind::not_supported_temporarily, std::string(), err); break; //X轴镜像
+                    case 12:return RecordError(lineNo, line, ErrorKind::not_supported_temporarily, std::string(), err); break; //Y轴镜像
+                    case 13:return RecordError(lineNo, line, ErrorKind::not_supported_temporarily, std::string(), err); break; //Z轴镜像
                     case 17:modal.plane = JogPlane::XY; break; //选择XY平面
                     case 18:modal.plane = JogPlane::ZX; break; //选择ZX平面
                     case 19:modal.plane = JogPlane::YZ; break; //选择YZ平面
@@ -292,8 +301,24 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
             case'K':break; //Z轴圆心偏移，根据letter检查value是否合法，会有“0.”“.5”这样的值
             case'R':break; //圆弧半径
 
-            case'L':break; //重复次数，根据letter检查value是否合法，必须是整数
-            case'N':break; //行号，根据letter检查value是否合法，行号是否超出
+            case'L': //重复次数，根据letter检查value是否合法，必须是整数
+            {
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                return RecordError(lineNo, line, ErrorKind::not_supported_temporarily, std::string(), err);
+                break; 
+            }
+                
+            case'N': //行号，根据letter检查value是否合法，行号是否超出
+            {
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                break;
+            }
 
             case'P':break; //参数
             case'Q':break; //参数
@@ -314,4 +339,16 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
 
     }
     return true;
+}
+
+
+
+bool GCodeModalMachine::ProcessLine(const int               lineNo,
+                                    const std::string&        line,
+                                    const std::vector<Word>& words,
+                                    ModalState&              modal,
+                                    MotionSegment&          outSeg,
+                                    std::vector<CodeError>&    err)
+{
+
 }

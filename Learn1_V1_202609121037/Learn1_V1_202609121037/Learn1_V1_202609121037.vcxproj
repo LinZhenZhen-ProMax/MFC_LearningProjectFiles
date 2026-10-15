@@ -192,6 +192,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SerialPort.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="ToolsList.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GCodeModalMachine.cpp" />
@@ -206,6 +207,7 @@
     </ClCompile>
     <ClCompile Include="SerialPort.cpp" />
     <ClCompile Include="test.cpp" />
+    <ClCompile Include="ToolsList.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Learn1V1202609121037.rc" />

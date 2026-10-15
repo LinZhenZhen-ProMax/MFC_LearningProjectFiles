@@ -4,6 +4,10 @@
 #include <vector>
 #include "GCodeModalMachine.h"
 
+/*****************************************
+* 考虑废弃，具体功能转移到ModalMachine中实现
+*****************************************/
+
 class MotionPlanner
 {
 public:

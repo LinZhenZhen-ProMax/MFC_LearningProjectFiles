@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "MotionPlanner.h"
+/*****************************************
+* 考虑废弃，具体功能转移到ModalMachine中实现
+*****************************************/
 
 bool MotionPlanner::ProcessLine(const std::vector<GCodeModalMachine::Word>& words,
                                 const GCodeModalMachine::ModalState& modal,

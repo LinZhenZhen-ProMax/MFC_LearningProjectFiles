@@ -9,7 +9,7 @@ class GCodeModalMachine
 {
 public:
 
-    //G代码结构体，字母后面跟着数值
+    //G代码结构体，letter地址字，value值，hasDot有无小数点
 	struct Word
 	{
 		char   letter = 0;
@@ -17,23 +17,27 @@ public:
         bool hasDot =false;
 	};
 
+    //报错类型
     enum struct ErrorKind
     {
         no_error,
         not_a_number,
         out_of_range,
         illegal_char,
+        illegal_value,
+        illegal_format,
         cannot_open_file,
         Unsupported_Letter,
-        illegal_value
+        not_supported_temporarily
     };
     
+    //报错结构体，lineNo行号，source源码，kind报错类型，path文件型报错地址
     struct CodeError
     {
-        std::string path = std::string();
-        int lineNo = 0;
-        ErrorKind kind = ErrorKind::no_error;
-        std::string source = std::string();
+        int           lineNo = 0;
+        std::string   source = std::string();
+        ErrorKind       kind = ErrorKind::no_error;
+        std::string     path = std::string();
     };
 
 
@@ -43,13 +47,13 @@ public:
 	//枚举运动类型，都是常量
 	enum struct MotionType
 	{
-		Rapid = 0,   // G00 快速进给
+		Rapid = 0,    // G00 快速进给
 		Line = 1,     // G01 切削进给
 		ArcCW = 2,    // G02 顺时针圆弧插补
 		ArcCCW = 3    // G03 逆时针圆弧插补
 	};
 
-    //枚举工作平面
+    //枚举圆弧插补工作平面
     enum struct JogPlane
     {
         XY = 17,
@@ -91,22 +95,23 @@ public:
     //枚举坐标计算方式
     enum class CoordinateMode
     {
-        Absolute = 90,    // G90绝对值编程
+        Absolute    = 90,    // G90绝对值编程
         Incremental = 91,    // G91增量式编程
     };
 
-    //枚举主轴转动
+    //M代码枚举主轴转动
     enum class SpindleDirection
     {
-        CW = 3,            // M03 正转
-        CCW = 4,            // M04 反转
+        CW = 3,              // M03 正转
+        CCW = 4,             // M04 反转
         Stop = 5,            // M05 停
     };
 
+    //M代码枚举工件冷却
     enum class Coolant
     {
         Flood = 8,           // M08 工件冷却
-        Off = 9,           // M09 工件冷却关
+        Off = 9,             // M09 工件冷却关
     };
     /******************************************************
     * 模态枚举结束
@@ -115,30 +120,23 @@ public:
     //模态结构体，系统当前的模态，将所有互斥的模态归入一个槽位
     struct ModalState
     {
-        MotionType    motion = MotionType::Rapid;       // ---- 槽位 1: 运动模式
-
-        JogPlane       plane = JogPlane::XY;            // ---- 槽位 2：加工平面
-
-        Units          units = Units::Millimeter;       // ---- 槽位 3: 尺寸单位
-        
-        CutterComp     ccomp = CutterComp::Off;         // ---- 槽位 4: 刀具半径补偿
-
-        LengthComp     lcomp = LengthComp::Positive;      // ---- 槽位 5: 刀具长度补偿
-
-        WorkOffset    offset = WorkOffset::G54;         // ---- 槽位 6: 坐标系
-
-        CoordinateMode coord = CoordinateMode::Absolute;// ---- 槽位 7: 坐标计算方式
-
-        Coolant      coolant = Coolant::Off;           // ---- 槽位 9: 工件冷却
-
-        SpindleDirection spindleDir = SpindleDirection::Stop;     // ---- 槽位 8: 主轴转向
+        //G、M代码互斥模态
+        MotionType           motion = MotionType::Rapid;       // ---- 槽位 1: 运动模式
+        JogPlane              plane = JogPlane::XY;            // ---- 槽位 2：加工平面
+        Units                 units = Units::Millimeter;       // ---- 槽位 3: 尺寸单位
+        CutterComp            ccomp = CutterComp::Off;         // ---- 槽位 4: 刀具半径补偿
+        LengthComp            lcomp = LengthComp::Positive;    // ---- 槽位 5: 刀具长度补偿
+        WorkOffset           offset = WorkOffset::G54;         // ---- 槽位 6: 坐标系
+        CoordinateMode        coord = CoordinateMode::Absolute;// ---- 槽位 7: 坐标计算方式
+        Coolant             coolant = Coolant::Off;            // ---- 槽位 8: 工件冷却
+        SpindleDirection spindleDir = SpindleDirection::Stop;  // ---- 槽位 9: 主轴转向
         
         
-        double feed = 0.0;
-
-        double spindleRpm = 0.0;
-
-        int  tool = 0;
+        double feed                  = 0.0;   //进给速度
+        double spindleRpm            = 0.0;   //主轴转速
+        int    tool                    = 0;   //刀具号
+        int    tool_LengthCompensation = 0;   //刀具长度补偿号
+        int    tool_RadiusCompensation = 0;   //刀具半径补偿号
 
         int  lineNo = 0;
 
@@ -189,6 +187,19 @@ public:
                                       ModalState&              modal, 
                                       MotionSegment&          outSeg, 
                                       std::vector<CodeError>&    err);
+
+
+    /****************************************
+    * ProcessLine函数解析一行, 产出运动段
+    ****************************************/
+    bool GCodeModalMachine::ProcessLine(const int               lineNo,
+                                        const std::string&        line,
+                                        const std::vector<Word>& words,
+                                        ModalState&              modal,
+                                        MotionSegment&          outSeg,
+                                        std::vector<CodeError>&    err);
+
+
 
     /****************************************
     * ApplyOffset函数把"程序坐标"换算成"机床坐标"
