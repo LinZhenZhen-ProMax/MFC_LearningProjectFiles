@@ -206,7 +206,7 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                     case 1:modal.motion = MotionType::Line; break;   //切削进给G1
                     case 2:modal.motion = MotionType::ArcCW; break;  //顺时针圆弧插补G2
                     case 3:modal.motion = MotionType::ArcCCW; break; //逆时针圆弧插补G3
-                    case 4: //暂停，这个要检查words[i+1].letter是否为P或X
+                    case 4: //暂停G4，这个要检查words[i+1].letter是否为P或X
                     {
                         if (words[i + 1].letter != 'P' && words[i + 1].letter != 'X')
                         {
@@ -282,11 +282,38 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                 }
                 break;//case'M'
             }
-            case'T':modal.tool = words[i].value; break;//刀具号，根据letter检查value是否合法，刀具号不能超出刀具数量
-            case'D':break; //刀具半径补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
-            case'H':break; //刀具长度补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
+            case'T'://刀具号，根据letter检查value是否合法，刀具号不能超出刀具数量
+            {
+                //整数检验
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                modal.tool = words[i].value; break;
+            }
+                
+            case'D'://刀具半径补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
+            {
+                //整数检验
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                modal.tool_RadiusCompensation = words[i].value; break; 
+            }
+                
+            case'H'://刀具长度补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
+            {
+                //整数检验
+                if (words[i].hasDot)
+                {
+                    return RecordError(lineNo, line, ErrorKind::illegal_value, std::string(), err);
+                }
+                modal.tool_LengthCompensation = words[i].value; break;
+            }
+                
 
-            case'F':modal.feed = words[i].value; break;      //进给速度，根据letter检查value是否合法，不能超出最大速度
+            case'F':modal.feed = words[i].value; break;      //进给速度，根据letter检查value是否合法，不能超出最大速度，mm/min
             case'S':modal.spindleRpm = words[i].value; break;//主轴转速，根据letter检查value是否合法，不能超出最大转速
 
             case'X':break; //X轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程
