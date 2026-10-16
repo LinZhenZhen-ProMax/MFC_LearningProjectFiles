@@ -188,17 +188,19 @@
     <ClInclude Include="Learn1_V1_202609121037.h" />
     <ClInclude Include="Learn1_V1_202609121037Dlg.h" />
     <ClInclude Include="MotionPlanner.h" />
+    <ClInclude Include="OffsetTable.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SerialPort.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="ToolsList.h" />
+    <ClInclude Include="ToolsTable.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GCodeModalMachine.cpp" />
     <ClCompile Include="Learn1_V1_202609121037.cpp" />
     <ClCompile Include="Learn1_V1_202609121037Dlg.cpp" />
     <ClCompile Include="MotionPlanner.cpp" />
+    <ClCompile Include="OffsetTable.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -207,7 +209,7 @@
     </ClCompile>
     <ClCompile Include="SerialPort.cpp" />
     <ClCompile Include="test.cpp" />
-    <ClCompile Include="ToolsList.cpp" />
+    <ClCompile Include="ToolsTable.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Learn1V1202609121037.rc" />

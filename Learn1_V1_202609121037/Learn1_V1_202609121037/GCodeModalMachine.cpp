@@ -377,5 +377,59 @@ bool GCodeModalMachine::ProcessLine(const int               lineNo,
                                     MotionSegment&          outSeg,
                                     std::vector<CodeError>&    err)
 {
+    size_t i = 0;
+    while (i <= words.size())
+    {
+        switch (modal.motion)
+        {
+        case GCodeModalMachine::MotionType::Rapid:
+        {
+            break;
+        }
+        case GCodeModalMachine::MotionType::Line:
+        {
+            break;
+        }
+        case GCodeModalMachine::MotionType::ArcCW:
+        {
+            switch (modal.plane)
+            {
+                case JogPlane::XY:
+                {
+                    break;
+                }
+                case JogPlane::ZX:
+                {
+                    break;
+                }
+                case JogPlane::YZ:
+                {
+                    break;
+                }
+            }
+            break;
+        }
+        case GCodeModalMachine::MotionType::ArcCCW:
+        {
+            switch (modal.plane)
+            {
+                case JogPlane::XY:
+                {
+                    break;
+                }
+                case JogPlane::ZX:
+                {
+                    break;
+                }
+                case JogPlane::YZ:
+                {
+                    break;
+                }
+            }
+            break;
+        }
+
+        }
+    }
 
 }

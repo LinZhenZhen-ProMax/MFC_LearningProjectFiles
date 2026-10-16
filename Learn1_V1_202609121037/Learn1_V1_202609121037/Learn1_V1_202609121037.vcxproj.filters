@@ -42,7 +42,10 @@
     <ClInclude Include="MotionPlanner.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="ToolsList.h">
+    <ClInclude Include="ToolsTable.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="OffsetTable.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -68,7 +71,10 @@
     <ClCompile Include="test.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="ToolsList.cpp">
+    <ClCompile Include="ToolsTable.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="OffsetTable.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
