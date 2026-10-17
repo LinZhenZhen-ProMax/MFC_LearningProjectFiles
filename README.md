@@ -4,7 +4,7 @@
 
 > 项目名 `Learn1_V1_202609121037` 表示这是第一个学习工程（V1，创建于 2026-09-12 10:37）。
 
-> 🌿 **分支说明**：`feature/async-planning` 分支在 master 基础上新增了 **多线程串口/规划模型** 与 **前瞻速度规划 + 轨迹实时仿真预览**，详见 [docs/THREADING_AND_PLANNING.md](docs/THREADING_AND_PLANNING.md)。master 分支保持原样。
+>  **分支说明**：`feature/async-planning` 分支在 master 基础上新增了 **多线程串口/规划模型** 与 **前瞻速度规划 + 轨迹实时仿真预览**，详见 [docs/THREADING_AND_PLANNING.md](docs/THREADING_AND_PLANNING.md)。master 分支保持原样。
 
 ## 项目简介
 
@@ -230,9 +230,9 @@ else
 
 ## 开发进度与说明
 
-- ✅ 已完成：G 代码词法分析、G/M 模态解析、统一错误记录；串口完整读写封装；对话框 UI 与 DDX 绑定。
-- 🚧 进行中：坐标字（X/Y/Z/I/J/K/R）数值校验与运动段计算、G91 增量坐标换算（`ApplyOffset` 已声明待实现）、`MotionPlanner` 各运动模式的段生成、串口 UI 事件处理。
-- 📎 `test.cpp` 为学习过程的草稿代码，未纳入正常构建流程，仅作思路参考。
+-  已完成：G 代码词法分析、G/M 模态解析、统一错误记录；串口完整读写封装；对话框 UI 与 DDX 绑定。
+-  进行中：坐标字（X/Y/Z/I/J/K/R）数值校验与运动段计算、G91 增量坐标换算（`ApplyOffset` 已声明待实现）、`MotionPlanner` 各运动模式的段生成、串口 UI 事件处理。
+-  `test.cpp` 为学习过程的草稿代码，未纳入正常构建流程，仅作思路参考。
 - 源码注释为中文（部分文件为 GBK/ANSI 编码，在 UTF-8 环境下查看可能出现乱码，用 VS 或切换 GBK 编码打开即可）。
 
 ## 许可证
