@@ -67,13 +67,62 @@ bool GCodeModalMachine::LoadProgram(const std::string& path,
 
         }
     }
-
+    return true;
 }
 
 /********************************************************
 * 读单行加工程序并切成一个一个的词
 * vector类负责创造一个能自动变长的数组，<Word>尖括号内表示数组类型，这个自动变长的数组本质上是一个类，他有成员函数
 ********************************************************/
+/****************************************************
+* LoadProgram【新增重载】：读入加工程序并收集所有运动段
+* 逐行 LexLine -> ParseLine(produced)，产生的运动段按
+* 程序顺序追加进 outSegs，供 LookAheadPlanner 规划。
+* 返回 true 表示文件读入完成（解析错误都累积在 outErrors）。
+****************************************************/
+bool GCodeModalMachine::LoadProgram(const std::string& path,
+                                    std::vector<CodeError>& outErrors,
+                                    ModalState& modal,
+                                    std::vector<MotionSegment>& outSegs)
+{
+    outSegs.clear();
+    std::ifstream jogprogram(path);
+    if (!jogprogram.is_open())
+    {
+        return RecordError(0, std::string(), ErrorKind::cannot_open_file, path, outErrors);
+    }
+
+    std::string line;
+    int lineNo = 0;
+
+    while (std::getline(jogprogram, line))
+    {
+        lineNo++;
+        std::vector<Word>      lineWords;
+        std::vector<CodeError> lineErrors;
+
+        if (!GCodeModalMachine::LexLine(lineNo, line, lineWords, lineErrors))
+        {
+            outErrors.insert(outErrors.end(), lineErrors.begin(), lineErrors.end());
+        }
+        else
+        {
+            MotionSegment seg;
+            bool produced = false;
+            if (!GCodeModalMachine::ParseLine(lineNo, line, lineWords,
+                                              modal, seg, produced, lineErrors))
+            {
+                outErrors.insert(outErrors.end(), lineErrors.begin(), lineErrors.end());
+            }
+            if (produced)
+            {
+                outSegs.push_back(seg);
+            }
+        }
+    }
+    return true;
+}
+
 bool GCodeModalMachine::LexLine(const int lineNo, 
                                 const std::string& line, 
                                 std::vector<Word>& words, 
@@ -181,15 +230,22 @@ bool GCodeModalMachine::LexLine(const int lineNo,
 * G、M两个代码是离散值，需要再嵌套switch
 * 
 *************************************************/
-bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
-                                  const std::string& line,        //行
-                                  const std::vector<Word>& words, //
-                                  ModalState& modal,              //状态输出
-                                  MotionSegment& outSeg,          //运动段输出
-                                  std::vector<CodeError>& err)    //报错输出
+bool GCodeModalMachine::ParseLine(const int               lineNo,
+                                  const std::string&        line,
+                                  const std::vector<Word>& words,
+                                  ModalState&              modal,
+                                  MotionSegment&          outSeg,
+                                  bool&                   produced,
+                                  std::vector<CodeError>&    err)
 {
+    produced = false;
+
+    // 本行的坐标目标：未指定的轴保持当前位置（G90 绝对 / G91 增量）
+    double tx = modal.currentX, ty = modal.currentY, tz = modal.currentZ;
+    bool hasAxis = false;
+
     size_t i = 0;
-    while (i <= words.size())
+    while (i < words.size())
     {
         switch (words[i].letter)
         {
@@ -202,40 +258,40 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                 int i_value = (int)std::round(words[i].value);
                 switch (i_value)
                 {
-                    case 0:modal.motion = MotionType::Rapid; break;  //快速进给
-                    case 1:modal.motion = MotionType::Line; break;   //切削进给
-                    case 2:modal.motion = MotionType::ArcCW; break;  //顺时针圆弧插补
-                    case 3:modal.motion = MotionType::ArcCCW; break; //逆时针圆弧插补
-                    case 4:break; //暂停
-                    case 10:break; //取消镜像
-                    case 11:break; //X轴镜像
-                    case 12:break; //Y轴镜像
-                    case 13:break; //Z轴镜像
-                    case 17:modal.plane = JogPlane::XY; break; //选择XY平面
-                    case 18:modal.plane = JogPlane::ZX; break; //选择ZX平面
-                    case 19:modal.plane = JogPlane::YZ; break; //选择YZ平面
-                    case 40:modal.ccomp = CutterComp::Off; break;     //取消刀具半径补偿
-                    case 41:modal.ccomp = CutterComp::Left; break;    //左侧刀具半径补偿
-                    case 42:modal.ccomp = CutterComp::Right; break;   //右侧刀具半径补偿
-                    case 43:modal.lcomp = LengthComp::Positive; break;//刀具长度正向补偿
-                    case 49:modal.lcomp = LengthComp::Cancel; break;  //取消刀具长度补偿
-                    case 51:break; //使用缩放
-                    case 53:modal.offset = WorkOffset::G53; break; //选择机床坐标系
+                    case 0:modal.motion = MotionType::Rapid; break;   // G00 快速定位
+                    case 1:modal.motion = MotionType::Line; break;    // G01 直线插补
+                    case 2:modal.motion = MotionType::ArcCW; break;   // G02 顺圆插补
+                    case 3:modal.motion = MotionType::ArcCCW; break;  // G03 逆圆插补
+                    case 4:break;   // G04 暂停
+                    case 10:break;  // 取消镜像
+                    case 11:break;  // X 轴镜像
+                    case 12:break;  // Y 轴镜像
+                    case 13:break;  // Z 轴镜像
+                    case 17:modal.plane = JogPlane::XY; break;        // 选 XY 平面
+                    case 18:modal.plane = JogPlane::ZX; break;        // 选 ZX 平面
+                    case 19:modal.plane = JogPlane::YZ; break;        // 选 YZ 平面
+                    case 40:modal.ccomp = CutterComp::Off; break;     // 取消半径补偿
+                    case 41:modal.ccomp = CutterComp::Left; break;    // 左半径补偿
+                    case 42:modal.ccomp = CutterComp::Right; break;   // 右半径补偿
+                    case 43:modal.lcomp = LengthComp::Positive; break;// 正长度补偿
+                    case 49:modal.lcomp = LengthComp::Cancel; break;  // 取消长度补偿
+                    case 51:break;  // 使用伸缩
+                    case 53:modal.offset = WorkOffset::G53; break;    // 机床坐标系
                     case 54:modal.offset = WorkOffset::G54; break;
                     case 55:modal.offset = WorkOffset::G55; break;
                     case 56:modal.offset = WorkOffset::G56; break;
                     case 57:modal.offset = WorkOffset::G57; break;
                     case 58:modal.offset = WorkOffset::G58; break;
                     case 59:modal.offset = WorkOffset::G59; break;
-                    case 68:break; //坐标旋转
-                    case 69:break; //坐标旋转取消
-                    case 90:modal.coord = CoordinateMode::Absolute; break; //绝对值编程
-                    case 91:modal.coord = CoordinateMode::Incremental; break; //增量值编程
-                    case 151:break; //选择加工参数
-                } 
+                    case 68:break;  // 坐标旋转
+                    case 69:break;  // 坐标旋转取消
+                    case 90:modal.coord = CoordinateMode::Absolute; break;   // 绝对编程
+                    case 91:modal.coord = CoordinateMode::Incremental; break;// 增量编程
+                    case 151:break;// 选择加工件数
+                }
                 break;//case'G'
             }
-            
+
             case'M':
             {
                 if (words[i].hasDot)
@@ -245,73 +301,113 @@ bool GCodeModalMachine::ParseLine(const int lineNo,               //行号
                 int i_value = (int)std::round(words[i].value);
                 switch (i_value)
                 {
-                    case 0:break; //暂停
-                    case 1:break; //暂停
-                    case 2:break; //结束加工
-                    case 3:modal.spindleDir = SpindleDirection::CW; break; //主轴正转
-                    case 4:modal.spindleDir = SpindleDirection::CCW; break; //主轴反转
-                    case 5:modal.spindleDir = SpindleDirection::Stop; break; //主轴停止
-                    case 6:break; //根据上一个 T 指令指定的刀号进行取刀
-                    case 7:break; //根据当前主轴上的刀号放至对应的刀座上
-                    case 8:modal.coolant = Coolant::Flood; break; //冷却开启
-                    case 9:modal.coolant = Coolant::Off; break; //冷却关闭
-                    case 13:break; //无线测头开启
-                    case 14:break; //无线测头关闭
-                    case 19:break; //主轴定位
-                    case 30:break; //结束加工
-                    case 37:break; //工件计数 + 1
-                    case 38:break; //当前刀具使用次数 + 1
-                    case 54:break; //当前位置设为用户坐标 X 轴原点
-                    case 55:break; //当前位置设为用户坐标 Y 轴原点
-                    case 56:break; //当前位置设为用户坐标 Z 轴原点
-                    case 57:break; //当前位置设为用户坐标三轴原点
-                    case 91:break; //对刀，对刀过程出错不暂停其他刀具对刀
-                    case 98:break; //调用子程序
-                    case 99:break; //结束子程序，返回主程序
-                    case 100:break; //停止译码
-                    case 101:break; //停止译码
+                    case 0:break;   // 程序暂停
+                    case 1:break;   // 选择暂停
+                    case 2:break;   // 程序结束
+                    case 3:modal.spindleDir = SpindleDirection::CW; break;   // 主轴正转
+                    case 4:modal.spindleDir = SpindleDirection::CCW; break;  // 主轴反转
+                    case 5:modal.spindleDir = SpindleDirection::Stop; break; // 主轴停止
+                    case 6:break;   // 换刀
+                    case 7:break;   // 换刀箱
+                    case 8:modal.coolant = Coolant::Flood; break;  // 冷却开
+                    case 9:modal.coolant = Coolant::Off; break;    // 冷却关
+                    case 13:break; // 刀具夹头开
+                    case 14:break; // 刀具夹头关
+                    case 19:break; // 主轴定位
+                    case 30:break; // 程序结束
+                    case 37:break; // 减速电机 +1
+                    case 38:break; // 当前刀具使用次数 +1
+                    case 54:break; // 当前位置设为用户数据 X 轴原点
+                    case 55:break; // 当前位置设为用户数据 Y 轴原点
+                    case 56:break; // 当前位置设为用户数据 Z 轴原点
+                    case 57:break; // 当前位置设为用户数据全部原点
+                    case 91:break; // 对刀仪
+                    case 98:break; // 子程序调用
+                    case 99:break; // 子程序返回
+                    case 100:break;// 停止主轴
+                    case 101:break;// 停止冷却
                 }
                 break;//case'M'
             }
-            case'T':modal.tool = words[i].value; break;//刀具号，根据letter检查value是否合法，刀具号不能超出刀具数量
-            case'D':break; //刀具半径补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
-            case'H':break; //刀具长度补偿号，根据letter检查value是否合法，刀具号不能超出刀具数量
+            case'T':modal.tool = words[i].value; break;  // 刀具号（范围校验待补）
+            case'D':break; // 刀具半径补偿号
+            case'H':break; // 刀具长度补偿号
 
-            case'F':modal.feed = words[i].value; break;      //进给速度，根据letter检查value是否合法，不能超出最大速度
-            case'S':modal.spindleRpm = words[i].value; break;//主轴转速，根据letter检查value是否合法，不能超出最大转速
+            case'F':modal.feed = words[i].value; break;       // 进给速度 mm/min
+            case'S':modal.spindleRpm = words[i].value; break; // 主轴转速
 
-            case'X':break; //X轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程
-            case'Y':break; //Y轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程
-            case'Z':break; //Z轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程
-            case'A':break; //4轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程（若有）
-            case'B':break; //5轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程（若有）
-            case'C':break; //6轴，根据letter检查value是否合法，会有“0.”“.5”这样的值，不能超出机床行程（若有）
+            // 坐标字：按 G90 绝对 / G91 增量换算为目标点
+            case'X':
+                tx = (modal.coord == CoordinateMode::Incremental)
+                     ? modal.currentX + words[i].value : words[i].value;
+                hasAxis = true; break;
+            case'Y':
+                ty = (modal.coord == CoordinateMode::Incremental)
+                     ? modal.currentY + words[i].value : words[i].value;
+                hasAxis = true; break;
+            case'Z':
+                tz = (modal.coord == CoordinateMode::Incremental)
+                     ? modal.currentZ + words[i].value : words[i].value;
+                hasAxis = true; break;
+            case'A':break; // 4 轴（校验待补）
+            case'B':break; // 5 轴（校验待补）
+            case'C':break; // 6 轴（校验待补）
 
-            case'I':break; //X轴圆心偏移，根据letter检查value是否合法，会有“0.”“.5”这样的值
-            case'J':break; //Y轴圆心偏移，根据letter检查value是否合法，会有“0.”“.5”这样的值
-            case'K':break; //Z轴圆心偏移，根据letter检查value是否合法，会有“0.”“.5”这样的值
-            case'R':break; //圆弧半径
+            case'I':break; // X 向圆心偏移（圆弧几何待补）
+            case'J':break; // Y 向圆心偏移（圆弧几何待补）
+            case'K':break; // Z 向圆心偏移（圆弧几何待补）
+            case'R':break; // 圆弧半径（圆弧几何待补）
 
-            case'L':break; //重复次数，根据letter检查value是否合法，必须是整数
-            case'N':break; //行号，根据letter检查value是否合法，行号是否超出
+            case'L':break; // 重复次数
+            case'N':break; // 行号
+            case'P':break; // 暂停参数
+            case'Q':break; // 暂停参数
+            case'V':break; // 加工件总数
 
-            case'P':break; //参数
-            case'Q':break; //参数
-            case'V':break; //加工参数组号
-                
             default:
             {
-                //所有case都没命中，报错
+                // 没有 case 接住的字母：报"不支持的字符"
                 return RecordError(lineNo, line, ErrorKind::Unsupported_Letter, std::string(), err);
-                break;
             }
-
         }
-            
+
         i++;
+    }
 
-        
+    /****************************************************
+    * 出现了坐标字 -> 产出运动段：
+    *   - 起点为模态机维护的当前位置，终点为换算后的目标点；
+    *   - G00/G01 直线段为精确几何；
+    *   - G02/G03 圆弧暂按"起点->终点弦线"近似（圆弧参数
+    *     I/J/K/R 尚未由解释器填入，为已知限制）；
+    *   - 产出后推进 modal.currentX/Y/Z。
+    ****************************************************/
+    if (hasAxis)
+    {
+        outSeg.type   = modal.motion;
+        outSeg.x0 = modal.currentX; outSeg.y0 = modal.currentY; outSeg.z0 = modal.currentZ;
+        outSeg.x1 = tx;             outSeg.y1 = ty;             outSeg.z1 = tz;
+        outSeg.feed   = modal.feed;
+        outSeg.lineNo = lineNo;
 
+        modal.currentX = tx;
+        modal.currentY = ty;
+        modal.currentZ = tz;
+        produced = true;
     }
     return true;
+}
+
+/****************************************
+* 旧签名（兼容保留）：转调带 produced 标志的新重载
+****************************************/
+bool GCodeModalMachine::ParseLine(const int               lineNo,
+                                  const std::string&        line,
+                                  const std::vector<Word>& words,
+                                  ModalState&              modal,
+                                  MotionSegment&          outSeg,
+                                  std::vector<CodeError>&    err)
+{
+    bool produced = false;
+    return ParseLine(lineNo, line, words, modal, outSeg, produced, err);
 }

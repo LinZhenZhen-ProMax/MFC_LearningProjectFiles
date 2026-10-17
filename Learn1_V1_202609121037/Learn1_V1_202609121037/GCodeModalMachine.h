@@ -162,11 +162,21 @@ public:
     /***************************************
     * LoadProgram函数读程序并把单行程序输出，行号输出
     ***************************************/
-    bool GCodeModalMachine::LoadProgram(const std::string&           path, 
-                                        std::vector<CodeError>&  outWords, 
-                                        std::vector<CodeError>& outErrors, 
+    bool GCodeModalMachine::LoadProgram(const std::string&           path,
+                                        std::vector<CodeError>&  outWords,
+                                        std::vector<CodeError>& outErrors,
                                         ModalState&                 modal,
                                         MotionSegment&             outseg);
+
+    /****************************************
+    * 新增重载：读入加工程序并收集【所有】运动段
+    * 供轨迹规划（LookAheadPlanner）使用。
+    * outSegs 按程序顺序追加每一段（起点/终点/类型/行号/进给）
+    ****************************************/
+    bool GCodeModalMachine::LoadProgram(const std::string& path,
+                                        std::vector<CodeError>& outErrors,
+                                        ModalState& modal,
+                                        std::vector<MotionSegment>& outSegs);
 
     /****************************************
     * LexLine函数逐行读加工程序，切成 word 数组
@@ -175,19 +185,32 @@ public:
     * 去空格、丢注释、转大写
     * 输入参数类型，std::string，std::vector<Word>，std::string
     ****************************************/
-    bool GCodeModalMachine::LexLine(const int              lineNo, 
-                                    const std::string&       line, 
-                                    std::vector<Word>&      words, 
+    bool GCodeModalMachine::LexLine(const int              lineNo,
+                                    const std::string&       line,
+                                    std::vector<Word>&      words,
                                     std::vector<CodeError>&   err);
 
     /****************************************
     * ParseLine函数解析一行, 更新模态和当前位置, 产出运动段
     ****************************************/
-    bool GCodeModalMachine::ParseLine(const int               lineNo, 
-                                      const std::string&        line, 
-                                      const std::vector<Word>& words, 
-                                      ModalState&              modal, 
-                                      MotionSegment&          outSeg, 
+    bool GCodeModalMachine::ParseLine(const int               lineNo,
+                                      const std::string&        line,
+                                      const std::vector<Word>& words,
+                                      ModalState&              modal,
+                                      MotionSegment&          outSeg,
+                                      std::vector<CodeError>&    err);
+
+    /****************************************
+    * 新增重载：带 produced 标志的解析
+    * produced=true 表示本行产生了运动段（写入了 outSeg）；
+    * 坐标字 X/Y/Z 会按 G90/G91 换算并推进 modal.currentX/Y/Z。
+    ****************************************/
+    bool GCodeModalMachine::ParseLine(const int               lineNo,
+                                      const std::string&        line,
+                                      const std::vector<Word>& words,
+                                      ModalState&              modal,
+                                      MotionSegment&          outSeg,
+                                      bool&                   produced,
                                       std::vector<CodeError>&    err);
 
     /****************************************

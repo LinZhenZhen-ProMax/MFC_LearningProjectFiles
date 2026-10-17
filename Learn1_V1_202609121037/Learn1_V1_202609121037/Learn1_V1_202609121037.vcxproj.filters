@@ -42,6 +42,21 @@
     <ClInclude Include="MotionPlanner.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="RingBuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="WorkerThread.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SerialWorker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="PlannerWorker.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="LookAheadPlanner.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Learn1_V1_202609121037.cpp">
@@ -60,6 +75,15 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MotionPlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="LookAheadPlanner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="PlannerWorker.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SerialWorker.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="test.cpp">
