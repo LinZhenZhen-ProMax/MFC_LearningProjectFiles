@@ -48,12 +48,17 @@ namespace CNC
 	enum struct OffsetErrorKind
 	{
 		no_error,
+		axis_nomber_illegal,
+		axis_nomber_exceed_axis_count,
+		frame_nomber_illegal,
+		frame_nomber_exceed_frame_count,
+		axis_value_exceed
 	};
 
 	//报错结构体，包含三个字段FrameNo，axis，kind
 	struct OffsetError
 	{
-		int           FrameNo = 0;
+		Frame         FrameNo = Frame::G54;
 		Axis             axis = Axis::X;
 		OffsetErrorKind  kind = OffsetErrorKind::no_error;
 	};
@@ -66,17 +71,14 @@ namespace CNC
 	class OffsetList
 	{
 	public:
+
 		OffsetList();//构造函数
 
 		      AxisOffset& operator[](Axis axis)       { return m_axis[(int)axis]; }
 		const AxisOffset& operator[](Axis axis) const { return m_axis[(int)axis]; }
 
-
-		bool CheckAxis(Axis axis, std::vector<OffsetError>& err);
-		bool CheckFrame(Frame frame, Axis axis, std::vector<OffsetError>& err);
-		bool CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
-
 	private:
+
 		//声明一个AxisOffset数组长度为6
 		AxisOffset m_axis[(int)Axis::count];
 
@@ -86,18 +88,27 @@ namespace CNC
 	class OffsetSet
 	{
 	public:
-		OffsetSet();//构造函数
+
+		OffsetSet(int axisCount = 3);//构造函数
 
 		      OffsetList& operator[](Frame frame)       { return m_list[(int)frame]; }
 		const OffsetList& operator[](Frame frame) const { return m_list[(int)frame]; }
 
+		// 设定偏置函数
 		bool setBase(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
 		bool setTrim(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
 
+		// 检查偏置函数输入参数是否正确
+		bool CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
+		bool CheckAxis(Frame frame, Axis axis, std::vector<OffsetError>& err);
+		bool CheckFrame(Frame frame, std::vector<OffsetError>& err);
+		
 	private:
+
 		//声明一个OffsetList数组长度为6
 		OffsetList m_list[(int)Frame::count];
 
+		int m_axisCount;
 	};
 
 }

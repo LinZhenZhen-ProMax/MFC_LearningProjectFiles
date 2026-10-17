@@ -15,7 +15,8 @@ namespace CNC
 
 	// m_list作为OffsetSet的成员，在构造函数执行之前就已经创建好，
 	// m_list是OffsetList类类型，所以会创建出六个OffsetList对象，OffsetList的构造函数会将六个轴的参数全部清零
-	OffsetSet::OffsetSet() :m_list()
+	// m_axisCount是int类型，是存储该机床轴数的。
+	OffsetSet::OffsetSet(int axisCount) :m_list(), m_axisCount(axisCount)
 	{
 		;
 	}
@@ -32,28 +33,41 @@ namespace CNC
 	//设置工件坐标系偏置Trim，在偏置表中提供
 	bool OffsetSet::setTrim(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
 	{
-		if (!CheckAxis) { ; }
+		if (!CheckAxis(frame, axis,)) { ; }
 		if (!CheckFrame) { ; }
 		if (!CheckValue) { ; }
 		m_list[(int)frame][axis].Trim = value;
 	}
 
 	
-	bool CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
+	bool OffsetSet::CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
 	{
+		if ((int)frame < 0 || (int)frame >= (int)Frame::count)
+		{
 
+		}
 	}
 
-	bool CheckAxis(Frame frame, Axis axis, std::vector<OffsetError>& err)
+	bool OffsetSet::CheckAxis(Frame frame, Axis axis, std::vector<OffsetError>& err)
 	{
 		if ((int)axis < 0 || (int)axis >= (int)Axis::count)
 		{
 			OffsetError e;
 			e.axis = axis;
-			e.
+			e.FrameNo = frame;
+			e.kind = OffsetErrorKind::axis_nomber_illegal;
+			err.push_back(e);
+		}
+		if ((int)axis >= m_axisCount)
+		{
+			OffsetError e;
+			e.axis = axis;
+			e.FrameNo = frame;
+			e.kind = OffsetErrorKind::axis_nomber_exceed_axis_count;
+			err.push_back(e);
 		}
 	}
-	bool CheckFrame(Frame frame, std::vector<OffsetError>& err)
+	bool OffsetSet::CheckFrame(Frame frame, std::vector<OffsetError>& err)
 	{
 
 	}
