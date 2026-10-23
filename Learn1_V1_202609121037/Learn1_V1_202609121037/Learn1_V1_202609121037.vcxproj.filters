@@ -48,6 +48,15 @@
     <ClInclude Include="OffsetTable.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="SoftPositionLimit.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CNCTypes.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CNCController.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Learn1_V1_202609121037.cpp">
@@ -75,6 +84,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="OffsetTable.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SoftPositionLimit.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CNCController.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

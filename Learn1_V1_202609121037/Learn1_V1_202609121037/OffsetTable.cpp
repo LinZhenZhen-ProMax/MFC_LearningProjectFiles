@@ -22,63 +22,105 @@ namespace CNC
 	}
 
 	//设置工件坐标系偏置Base，在分中的时候提供
-	bool OffsetSet::setBase(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
+	bool OffsetSet::SetBase(Frame                   frame, 
+		                    Axis                     axis, 
+		                    double                  value, 
+		                    const SetSoftLimit&    limits, 
+		                    std::vector<OffsetError>& err)
 	{
 		std::vector<OffsetError>seterror;
-		if (!CheckAxis(frame, axis, seterror)) 
+
+		double total = m_list[(int)frame][axis].Trim + value;
+
+		if (!Check(frame, axis, total, limits, seterror))
 		{
 			err.insert(err.end(), seterror.begin(), seterror.end());
 		}
-		if (!CheckFrame)
-		{
-
-		}
-		if (!CheckValue) { ; }
+		
 		m_list[(int)frame][axis].Base = value;
 	}
 
 	//设置工件坐标系偏置Trim，在偏置表中提供
-	bool OffsetSet::setTrim(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
+	//每次set都会新建函数内报错数组，所以不会有报旧错的情况
+	//Trim+Base加在一起比较软限
+	bool OffsetSet::SetTrim(Frame                   frame, 
+		                    Axis                     axis, 
+		                    double                  value, 
+		                    const SetSoftLimit&    limits, 
+		                    std::vector<OffsetError>& err)
 	{
 		std::vector<OffsetError>seterror;
-		if (!CheckAxis(frame, axis, seterror)) { ; }
-		if (!CheckFrame) { ; }
-		if (!CheckValue) { ; }
+
+		double total = m_list[(int)frame][axis].Base + value;
+
+		if (!Check(frame, axis, total, limits, seterror))
+		{
+			err.insert(err.end(), seterror.begin(), seterror.end());
+		}
+
 		m_list[(int)frame][axis].Trim = value;
 	}
 
-	
-	bool OffsetSet::CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err)
+	// 尝试将value、axis、frame三个check整合成一个,
+	// 枚举型赋值只认类型名，只要类型名正确，(frame)99也能存进去，所以需要验证是否超出
+	bool OffsetSet::Check(Frame frame, Axis axis, double total, const SetSoftLimit& limits, std::vector<OffsetError>& err)
 	{
-		if ((int)frame < 0 || (int)frame >= (int)Frame::count)
-		{
+		bool iserror = false;
 
-		}
-	}
-
-	bool OffsetSet::CheckAxis(Frame frame, Axis axis, std::vector<OffsetError>& err)
-	{
+		//轴号是否合法
 		if ((int)axis < 0 || (int)axis >= (int)Axis::count)
 		{
 			OffsetError e;
-			e.axis = axis;
+			e.AxisNo = axis;
 			e.FrameNo = frame;
 			e.kind = OffsetErrorKind::axis_nomber_illegal;
 			err.push_back(e);
+			iserror = true;
 		}
+
+		//是否超出设定的轴数，默认三轴
 		if ((int)axis < 0 || (int)axis >= m_axisCount)
 		{
 			OffsetError e;
-			e.axis = axis;
+			e.AxisNo = axis;
 			e.FrameNo = frame;
 			e.kind = OffsetErrorKind::axis_nomber_exceed_axis_count;
 			err.push_back(e);
+			iserror = true;
 		}
-	}
-	bool OffsetSet::CheckFrame(Frame frame, std::vector<OffsetError>& err)
-	{
 
+		//坐标系号是否合法
+		if ((int)frame < 0 || (int)frame >= (int)Frame::count)
+		{
+			OffsetError e;
+			e.AxisNo = axis;
+			e.FrameNo = frame;
+			e.kind = OffsetErrorKind::frame_nomber_illegal;
+			err.push_back(e);
+			iserror = true;
+		}
+
+		//是否超出机床软限，for轮询第一第二软限，软限未上使能则跳过
+		for (int i = 0; i < (int)CNC::SoftLimitSlot::count; ++i)
+		{
+			const SoftLimitRange& range = limits[axis][(SoftLimitSlot)i];
+			if (!range.Enable)continue;
+
+			if (total < range.Min || total > range.Max)
+			{
+				OffsetError e;
+				e.AxisNo = axis;
+				e.FrameNo = frame;
+				e.kind = OffsetErrorKind::axis_value_exceed_soft_limit;
+				err.push_back(e);
+				iserror = true;
+			}
+		}
+		
+		//上述四项检测都做完才会返回，返回标志位取反，有报错return false
+		return !iserror;
 	}
+	
 	
 }
 

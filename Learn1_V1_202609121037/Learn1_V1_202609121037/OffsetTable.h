@@ -3,37 +3,14 @@
 #include <vector>
 #include <string>
 
+#include "CNCTypes.h"
+#include "SoftPositionLimit.h"
 
-/*
-* 先枚举出轴，层，坐标系等机床变量
-*/
+// 枚举轴和工件坐标系依旧在CNC命名空间内，转移到了CNCTypes.h
 namespace CNC
 {
-	//枚举轴CNC::Axis
-	enum struct Axis
-	{
-		X = 0,
-		Y,
-		Z,
-		A,
-		B,
-		C,
-		count
-	};
-
-	//枚举坐标系CNC::Frame
-	enum struct Frame
-	{
-		G54=0,
-		G55,
-		G56,
-		G57,
-		G58,
-		G59,
-		count
-	};
-
-	//轴偏置参数结构体，包括基础偏置和修调偏置，提供三个函数用于计算，查询，清零。同时这个也是第一层结构
+	
+	// 轴偏置参数结构体，包括基础偏置和修调偏置，提供三个函数用于计算，查询，清零。同时这个也是第一层结构
 	struct AxisOffset
 	{
 		double Base = 0.0;   // 
@@ -52,14 +29,14 @@ namespace CNC
 		axis_nomber_exceed_axis_count,
 		frame_nomber_illegal,
 		frame_nomber_exceed_frame_count,
-		axis_value_exceed
+		axis_value_exceed_soft_limit
 	};
 
 	//报错结构体，包含三个字段FrameNo，axis，kind
 	struct OffsetError
 	{
 		Frame         FrameNo = Frame::G54;
-		Axis             axis = Axis::X;
+		Axis           AxisNo = Axis::X;
 		OffsetErrorKind  kind = OffsetErrorKind::no_error;
 	};
 
@@ -89,19 +66,18 @@ namespace CNC
 	{
 	public:
 
-		OffsetSet(int axisCount = 3);//构造函数
+		OffsetSet(int axisCount = 3);//构造函数，默认实参只决定实参省略时传进来什么，若在构造函数中不赋值，则默认是三轴
 
 		      OffsetList& operator[](Frame frame)       { return m_list[(int)frame]; }
 		const OffsetList& operator[](Frame frame) const { return m_list[(int)frame]; }
 
 		// 设定偏置函数
-		bool setBase(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
-		bool setTrim(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
+		bool SetBase(Frame frame, Axis axis, double value, const SetSoftLimit& limits, std::vector<OffsetError>& err);
+		bool SetTrim(Frame frame, Axis axis, double value, const SetSoftLimit& limits, std::vector<OffsetError>& err);
 
 		// 检查偏置函数输入参数是否正确
-		bool CheckValue(Frame frame, Axis axis, double value, std::vector<OffsetError>& err);
-		bool CheckAxis(Frame frame, Axis axis, std::vector<OffsetError>& err);
-		bool CheckFrame(Frame frame, std::vector<OffsetError>& err);
+		bool Check(Frame frame, Axis axis, double total, const SetSoftLimit& limits, std::vector<OffsetError>& err);
+		
 		
 	private:
 
